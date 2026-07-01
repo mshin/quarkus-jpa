@@ -5,6 +5,9 @@ import org.testcontainers.containers.OracleContainer;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.utility.DockerImageName;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.time.Duration;
 
@@ -22,6 +25,7 @@ class JpaOracleContainerTest {
                 .withRegEx(".*DATABASE IS READY TO USE!.*")//".*Database mounted.*")//
                 .withStartupTimeout(Duration.ofSeconds(120L))
         );
+        oracle.withDatabaseName("FREEPDB12");//FREEPDB1 is standard
         oracle.start();
     }
 
@@ -37,7 +41,8 @@ class JpaOracleContainerTest {
              Statement stmt = conn.createStatement()) {
 
             // 1. Create table
-            stmt.executeUpdate("CREATE TABLE test_table (id NUMBER PRIMARY KEY, name VARCHAR2(100))");
+            String createTableSql = loadSqlResource("table.ddl");
+            stmt.executeUpdate(createTableSql);
 
             // 2. Insert data
             stmt.executeUpdate("INSERT INTO test_table (id, name) VALUES (1, 'Alice')");
@@ -55,6 +60,21 @@ class JpaOracleContainerTest {
 
                 Assertions.assertFalse(rs.next());
             }
+        }
+    }
+
+    private static String loadSqlResource(String resourceName) throws IOException {
+        try (InputStream in = JpaOracleContainerTest.class.getClassLoader().getResourceAsStream(resourceName)) {
+            if (in == null) {
+                throw new IOException("Resource not found: " + resourceName);
+            }
+
+            String sql = new String(in.readAllBytes(), StandardCharsets.UTF_8).trim();
+            // JDBC execution should not include a trailing semicolon.
+            if (sql.endsWith(";")) {
+                return sql.substring(0, sql.length() - 1);
+            }
+            return sql;
         }
     }
 }

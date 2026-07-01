@@ -6,7 +6,15 @@ A `ReentrantLock` is used to provide this, locking before the Quarkus transactio
 
 ## Before Running
 In order to get tests to run, must execute these commands 1st to get testcontainers to work with podman:
+```
+podman stop --all
+podman rm --all --volumes
+podman system prune -a -f
 
+podman machine stop
+podman system reset -f
+podman machine start
+```
 ```
 podman machine init
 podman machine set --rootful
